@@ -7,9 +7,12 @@ Computer Control Framework
 - 截屏和UI元素检测
 - 鼠标键盘控制
 - 预留AI接口
+- 异步执行
+- 重试机制
+- 调试工具
 
 快速开始:
-    from computer_control import get_controller, ComputerAgent, AIBrain
+    from src import get_controller, ComputerAgent, AIBrain
     
     # 方式1: 直接使用控制器
     controller = get_controller()
@@ -24,9 +27,19 @@ Computer Control Framework
     
     agent = ComputerAgent(MyBrain())
     agent.run("打开Chrome")
+    
+    # 方式3: 异步Agent
+    from src import AsyncComputerAgent, AsyncAIBrain
+    
+    class MyAsyncBrain(AsyncAIBrain):
+        async def think(self, screen_state, task):
+            return Action(...)
+    
+    agent = AsyncComputerAgent(MyAsyncBrain())
+    await agent.run("执行任务")
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 # 核心类型
 from .core.types import (
@@ -46,13 +59,37 @@ from .core.types import (
 from .core.base import ComputerController, ActionExecutor
 from .platforms import get_controller
 
-# AI接口
+# 重试机制
+from .core.retry import (
+    RetryConfig,
+    RetryExecutor,
+    retry,
+    exponential_backoff,
+    constant_backoff,
+    linear_backoff,
+    jittered_backoff,
+    STANDARD_RETRY,
+    AGGRESSIVE_RETRY,
+    CONSERVATIVE_RETRY,
+)
+
+# AI接口 (同步)
 from .ai_interface import (
     AIBrain,
     ComputerAgent,
     AgentConfig,
     create_agent,
     SimpleClickBrain,
+)
+
+# AI接口 (异步)
+from .async_agent import (
+    AsyncAIBrain,
+    AsyncComputerAgent,
+    AsyncAgentConfig,
+    SyncBrainAdapter,
+    create_async_agent,
+    run_task,
 )
 
 # 视觉模块
@@ -70,6 +107,22 @@ from .vision.omniparser_detector import OmniParserDetector
 from .vision.accessibility_detector import (
     AccessibilityDetector,
     HybridDetector,
+)
+
+# 日志和调试
+from .utils.logger import (
+    get_logger,
+    get_action_logger,
+    init_logging,
+    set_level,
+)
+from .utils.debug import (
+    DebugViewer,
+    DebugAgent,
+    save_debug_screenshot,
+    annotate_screenshot,
+    create_debug_agent,
+    quick_screenshot_debug,
 )
 
 __all__ = [
@@ -93,12 +146,32 @@ __all__ = [
     "ActionExecutor",
     "get_controller",
     
-    # AI Interface
+    # Retry
+    "RetryConfig",
+    "RetryExecutor",
+    "retry",
+    "exponential_backoff",
+    "constant_backoff",
+    "linear_backoff",
+    "jittered_backoff",
+    "STANDARD_RETRY",
+    "AGGRESSIVE_RETRY",
+    "CONSERVATIVE_RETRY",
+    
+    # AI Interface (Sync)
     "AIBrain",
     "ComputerAgent",
     "AgentConfig",
     "create_agent",
     "SimpleClickBrain",
+    
+    # AI Interface (Async)
+    "AsyncAIBrain",
+    "AsyncComputerAgent",
+    "AsyncAgentConfig",
+    "SyncBrainAdapter",
+    "create_async_agent",
+    "run_task",
     
     # Vision
     "ScreenAnnotator",
@@ -111,5 +184,17 @@ __all__ = [
     "OmniParserDetector",
     "AccessibilityDetector",
     "HybridDetector",
+    
+    # Logging & Debug
+    "get_logger",
+    "get_action_logger",
+    "init_logging",
+    "set_level",
+    "DebugViewer",
+    "DebugAgent",
+    "save_debug_screenshot",
+    "annotate_screenshot",
+    "create_debug_agent",
+    "quick_screenshot_debug",
 ]
 

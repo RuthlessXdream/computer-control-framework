@@ -8,6 +8,13 @@
 
 > 让 AI 模型像人一样操作电脑：截屏、识别 UI 元素、执行鼠标键盘操作
 
+## ✨ v0.2.0 新特性
+
+- 🚀 **异步支持** - AsyncComputerAgent 支持异步 AI API
+- 🔄 **重试机制** - 内置多种退避策略，自动错误恢复
+- 🔍 **调试工具** - 可视化调试，自动生成 HTML 报告
+- 💪 **平台增强** - Windows/Linux 原生 API 支持
+
 ## 🎯 设计理念
 
 这是一个 **纯控制层框架**，不包含 AI 逻辑。它的核心职责是：
@@ -134,6 +141,26 @@ controller.type_text("Hello World")
 controller.key_press("enter")
 controller.hotkey("command", "c")  # macOS
 controller.hotkey("ctrl", "c")     # Windows
+```
+
+### 2. 异步 Agent (v0.2.0 新增)
+
+```python
+import asyncio
+from src import AsyncComputerAgent, AsyncAIBrain, ScreenState, Action, ActionType
+
+class MyAsyncBrain(AsyncAIBrain):
+    async def think(self, screen_state: ScreenState, task: str):
+        # 异步调用 AI API
+        # response = await your_async_llm.generate(...)
+        return Action(action_type=ActionType.CLICK, coordinate=Point(100, 200))
+
+async def main():
+    brain = MyAsyncBrain()
+    agent = AsyncComputerAgent(brain)
+    await agent.run("执行任务")
+
+asyncio.run(main())
 ```
 
 ### 2. 通过 Agent 使用 (推荐)
@@ -408,6 +435,37 @@ config = AgentConfig(
 )
 
 agent = ComputerAgent(brain, config=config)
+```
+
+### 重试配置 (v0.2.0 新增)
+
+```python
+from src import RetryExecutor, RetryConfig, exponential_backoff, STANDARD_RETRY
+
+# 使用预定义配置
+executor = RetryExecutor(action_executor, STANDARD_RETRY)
+
+# 自定义配置
+config = RetryConfig(
+    max_attempts=5,
+    backoff_strategy=exponential_backoff(base=0.1, max_delay=5.0),
+)
+```
+
+### 调试配置 (v0.2.0 新增)
+
+```python
+from src import DebugViewer, create_debug_agent
+
+# 创建调试代理
+debug_agent = create_debug_agent(agent)
+debug_agent.run("任务")  # 自动生成 HTML 调试报告
+
+# 或手动使用
+viewer = DebugViewer(output_dir="debug_output")
+viewer.start_session("任务名称")
+# ... 执行操作 ...
+viewer.end_session(success=True)
 ```
 
 ### 环境变量配置
