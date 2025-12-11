@@ -10,8 +10,7 @@ Computer Control Framework - Type Definitions
 
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Optional, List, Dict, Any, Union, Tuple
-import base64
+from typing import Any, Dict, List, Optional
 
 
 class CoordinateType(Enum):
@@ -37,18 +36,18 @@ class ActionType(Enum):
     RIGHT_CLICK = "right_click"
     DRAG = "drag"
     SCROLL = "scroll"
-    
+
     # 键盘操作
     TYPE_TEXT = "type_text"
     KEY_PRESS = "key_press"
     KEY_DOWN = "key_down"
     KEY_UP = "key_up"
     HOTKEY = "hotkey"
-    
+
     # 系统操作
     SCREENSHOT = "screenshot"
     WAIT = "wait"
-    
+
     # 窗口操作
     FOCUS_WINDOW = "focus_window"
     GET_WINDOW_INFO = "get_window_info"
@@ -60,7 +59,7 @@ class Point:
     x: float
     y: float
     coordinate_type: CoordinateType = CoordinateType.ABSOLUTE
-    
+
     def to_absolute(self, screen_width: int, screen_height: int) -> "Point":
         """转换为绝对坐标"""
         if self.coordinate_type == CoordinateType.ABSOLUTE:
@@ -73,7 +72,7 @@ class Point:
             )
         else:
             raise ValueError("Cannot convert ELEMENT_LABEL to absolute without element info")
-    
+
     def to_percentage(self, screen_width: int, screen_height: int) -> "Point":
         """转换为百分比坐标"""
         if self.coordinate_type == CoordinateType.PERCENTAGE:
@@ -102,15 +101,15 @@ class Rect:
     top: int
     right: int
     bottom: int
-    
+
     @property
     def width(self) -> int:
         return self.right - self.left
-    
+
     @property
     def height(self) -> int:
         return self.bottom - self.top
-    
+
     @property
     def center(self) -> Point:
         return Point(
@@ -118,7 +117,7 @@ class Rect:
             (self.top + self.bottom) / 2,
             CoordinateType.ABSOLUTE
         )
-    
+
     def to_percentage(self, screen_width: int, screen_height: int) -> "Rect":
         """转换为百分比矩形"""
         return Rect(
@@ -133,7 +132,7 @@ class Rect:
 class ScreenElement:
     """
     屏幕元素 - AI识别到的UI元素
-    
+
     支持两种定位方式：
     1. label: 用于AI模型通过标签引用 (如 "~1", "~2")
     2. rect: 边界框坐标
@@ -143,40 +142,40 @@ class ScreenElement:
     element_type: Optional[str] = None  # 元素类型 (button, text, icon等)
     text: Optional[str] = None          # 元素文本内容 (OCR识别)
     confidence: float = 1.0             # 检测置信度
-    
+
     @property
     def center_point(self) -> Point:
         """获取元素中心点"""
         return self.rect.center
 
 
-@dataclass 
+@dataclass
 class Action:
     """
     操作指令 - AI的输出格式
-    
+
     这是AI模型输出的标准格式，控制层负责执行
     """
     action_type: ActionType
-    
+
     # 坐标相关 (鼠标操作)
     coordinate: Optional[Point] = None
     element_label: Optional[str] = None  # 通过标签定位元素
-    
+
     # 文本相关 (键盘操作)
     text: Optional[str] = None
     keys: Optional[List[str]] = None
-    
+
     # 其他参数
     button: MouseButton = MouseButton.LEFT
     scroll_amount: int = 0
     scroll_direction: str = "down"  # up, down, left, right
     duration: float = 0.0
-    
+
     # 拖拽相关
     end_coordinate: Optional[Point] = None
     end_element_label: Optional[str] = None
-    
+
     # 额外参数
     extra: Dict[str, Any] = field(default_factory=dict)
 
@@ -185,28 +184,28 @@ class Action:
 class ActionResult:
     """
     操作结果 - 返回给AI的反馈
-    
+
     包含执行状态和可选的截屏
     """
     success: bool
     message: str = ""
     error: Optional[str] = None
-    
+
     # 截屏 (base64编码)
     screenshot_base64: Optional[str] = None
-    
+
     # 检测到的UI元素列表
     elements: List[ScreenElement] = field(default_factory=list)
-    
+
     # 元素标签到坐标的映射 (方便AI查询)
     label_to_rect: Dict[str, Rect] = field(default_factory=dict)
-    
+
     # 屏幕信息
     screen_size: Optional[Size] = None
-    
+
     # 执行耗时 (秒)
     duration: float = 0.0
-    
+
     # 原始数据 (调试用)
     raw_data: Optional[Dict[str, Any]] = None
 
@@ -215,38 +214,37 @@ class ActionResult:
 class ScreenState:
     """
     屏幕状态 - 截屏 + 元素识别结果
-    
+
     这是发送给AI的输入格式
     """
     # 原始截屏 (base64)
     screenshot_base64: str
-    
+
     # 标注后的截屏 (base64) - 带有元素标签框
     annotated_screenshot_base64: Optional[str] = None
-    
+
     # 识别到的元素列表
     elements: List[ScreenElement] = field(default_factory=list)
-    
+
     # 标签到坐标映射
     label_to_rect: Dict[str, Rect] = field(default_factory=dict)
-    
+
     # 屏幕尺寸
     screen_size: Size = None
-    
+
     # 时间戳
     timestamp: float = 0.0
-    
+
     def get_element_by_label(self, label: str) -> Optional[ScreenElement]:
         """通过标签获取元素"""
         for elem in self.elements:
             if elem.label == label:
                 return elem
         return None
-    
+
     def get_click_point(self, label: str) -> Optional[Point]:
         """获取元素的点击坐标"""
         elem = self.get_element_by_label(label)
         if elem:
             return elem.center_point
         return None
-

@@ -3,14 +3,15 @@
 
 import platform
 
+
 def get_controller():
     """
     获取当前平台的控制器
-    
+
     自动检测操作系统并返回对应的控制器实例
     """
     system = platform.system()
-    
+
     if system == "Darwin":
         from .macos import MacOSController
         return MacOSController()
@@ -25,4 +26,3 @@ def get_controller():
 
 
 __all__ = ["get_controller"]
-

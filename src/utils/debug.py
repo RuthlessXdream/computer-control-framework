@@ -9,29 +9,29 @@ Debug Tools - 可视化调试工具
 
 使用方式:
     from src.utils.debug import DebugViewer, save_debug_screenshot
-    
+
     # 保存调试截图
     save_debug_screenshot(screenshot_bytes, elements, "debug_output.png")
-    
+
     # 使用调试查看器
     viewer = DebugViewer()
     viewer.show_screenshot(screenshot_bytes, elements)
     viewer.show_execution_history(history)
 """
 
-import os
-import json
 import base64
+import json
+import os
 import time
+from dataclasses import asdict, dataclass
 from datetime import datetime
-from pathlib import Path
-from typing import List, Dict, Any, Optional, Tuple
 from io import BytesIO
-from dataclasses import dataclass, asdict
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
 from PIL import Image, ImageDraw, ImageFont
 
-from ..core.types import ScreenElement, Rect, Action, ActionResult, ScreenState
+from ..core.types import Action, ActionResult, Rect, ScreenElement
 
 # ==================== 配置 ====================
 
@@ -65,16 +65,16 @@ class DebugFrame:
     action: Optional[Dict[str, Any]]
     result: Optional[Dict[str, Any]]
     duration: float
-    
+
     def to_dict(self) -> dict:
         return asdict(self)
-    
+
     @classmethod
     def from_dict(cls, data: dict) -> "DebugFrame":
         return cls(**data)
 
 
-@dataclass  
+@dataclass
 class DebugSession:
     """调试会话 - 记录完整任务执行"""
     session_id: str
@@ -84,24 +84,24 @@ class DebugSession:
     frames: List[DebugFrame]
     success: bool
     total_steps: int
-    
+
     def to_dict(self) -> dict:
         return {
             **asdict(self),
             "frames": [f.to_dict() for f in self.frames]
         }
-    
+
     def save(self, path: str) -> None:
         """保存会话到文件"""
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(self.to_dict(), f, ensure_ascii=False, indent=2)
-    
+
     @classmethod
     def load(cls, path: str) -> "DebugSession":
         """从文件加载会话"""
         with open(path, 'r', encoding='utf-8') as f:
             data = json.load(f)
-        
+
         data["frames"] = [DebugFrame.from_dict(f) for f in data["frames"]]
         return cls(**data)
 
@@ -123,14 +123,14 @@ def annotate_image(
 ) -> Image.Image:
     """
     在图像上标注元素
-    
+
     Args:
         image: PIL Image 对象
         elements: 元素列表
         highlight_label: 要高亮的元素标签
         show_labels: 是否显示标签
         show_confidence: 是否显示置信度
-        
+
     Returns:
         标注后的图像
     """
@@ -138,20 +138,20 @@ def annotate_image(
     annotated = image.copy().convert("RGBA")
     overlay = Image.new("RGBA", annotated.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
-    
+
     # 尝试加载字体
     try:
         font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", LABEL_FONT_SIZE)
-    except Exception:
+    except OSError:
         try:
             font = ImageFont.truetype("arial.ttf", LABEL_FONT_SIZE)
-        except Exception:
+        except OSError:
             font = ImageFont.load_default()
-    
+
     # 绘制每个元素
     for elem in elements:
         rect = elem.rect
-        
+
         # 选择颜色
         if elem.label == highlight_label:
             color = ANNOTATION_COLORS["selected"]
@@ -159,49 +159,49 @@ def annotate_image(
         else:
             color = get_element_color(elem.element_type)
             line_width = BOX_LINE_WIDTH
-        
+
         # 绘制边框
         draw.rectangle(
             [rect.left, rect.top, rect.right, rect.bottom],
             outline=color[:3],
             width=line_width
         )
-        
+
         # 绘制半透明填充
         fill_color = (*color[:3], 30)  # 很淡的填充
         draw.rectangle(
             [rect.left, rect.top, rect.right, rect.bottom],
             fill=fill_color
         )
-        
+
         # 绘制标签
         if show_labels:
             label_text = elem.label
             if show_confidence and elem.confidence < 1.0:
                 label_text += f" ({elem.confidence:.0%})"
-            
+
             # 标签背景
             bbox = font.getbbox(label_text)
             text_width = bbox[2] - bbox[0]
             text_height = bbox[3] - bbox[1]
-            
+
             label_x = rect.left
             label_y = rect.top - text_height - 4
             if label_y < 0:
                 label_y = rect.bottom + 2
-            
+
             draw.rectangle(
                 [label_x, label_y, label_x + text_width + 4, label_y + text_height + 4],
                 fill=color[:3]
             )
-            
+
             draw.text(
                 (label_x + 2, label_y + 2),
                 label_text,
                 fill=(255, 255, 255),
                 font=font
             )
-    
+
     # 合并图层
     annotated = Image.alpha_composite(annotated, overlay)
     return annotated.convert("RGB")
@@ -214,18 +214,18 @@ def annotate_screenshot(
 ) -> bytes:
     """
     标注截图
-    
+
     Args:
         screenshot_bytes: PNG 截图字节
         elements: 元素列表
         **kwargs: 传递给 annotate_image 的参数
-        
+
     Returns:
         标注后的 PNG 字节
     """
     image = Image.open(BytesIO(screenshot_bytes))
     annotated = annotate_image(image, elements, **kwargs)
-    
+
     buffer = BytesIO()
     annotated.save(buffer, format='PNG')
     return buffer.getvalue()
@@ -239,24 +239,24 @@ def save_debug_screenshot(
 ) -> str:
     """
     保存调试截图
-    
+
     Args:
         screenshot_bytes: PNG 截图字节
         elements: 元素列表
         output_path: 输出路径
         **kwargs: 传递给 annotate_image 的参数
-        
+
     Returns:
         保存的文件路径
     """
     annotated_bytes = annotate_screenshot(screenshot_bytes, elements, **kwargs)
-    
+
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    
+
     with open(output_path, 'wb') as f:
         f.write(annotated_bytes)
-    
+
     return str(output_path)
 
 
@@ -265,10 +265,10 @@ def save_debug_screenshot(
 class DebugViewer:
     """
     调试查看器
-    
+
     用于可视化调试 AI Agent 的执行过程
     """
-    
+
     def __init__(self, output_dir: str = None):
         """
         Args:
@@ -276,14 +276,14 @@ class DebugViewer:
         """
         self.output_dir = Path(output_dir or DEFAULT_DEBUG_DIR)
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         self._current_session: Optional[DebugSession] = None
         self._frame_count = 0
-    
+
     def start_session(self, task: str) -> str:
         """开始新的调试会话"""
         session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-        
+
         self._current_session = DebugSession(
             session_id=session_id,
             task=task,
@@ -294,13 +294,13 @@ class DebugViewer:
             total_steps=0
         )
         self._frame_count = 0
-        
+
         # 创建会话目录
         session_dir = self.output_dir / session_id
         session_dir.mkdir(exist_ok=True)
-        
+
         return session_id
-    
+
     def record_frame(
         self,
         screenshot_base64: str,
@@ -311,9 +311,9 @@ class DebugViewer:
         """记录一帧"""
         if not self._current_session:
             return
-        
+
         self._frame_count += 1
-        
+
         frame = DebugFrame(
             step=self._frame_count,
             timestamp=time.time(),
@@ -321,7 +321,7 @@ class DebugViewer:
             elements=[
                 {
                     "label": e.label,
-                    "rect": {"left": e.rect.left, "top": e.rect.top, 
+                    "rect": {"left": e.rect.left, "top": e.rect.top,
                              "right": e.rect.right, "bottom": e.rect.bottom},
                     "type": e.element_type,
                     "text": e.text,
@@ -342,22 +342,22 @@ class DebugViewer:
             } if result else None,
             duration=result.duration if result else 0
         )
-        
+
         self._current_session.frames.append(frame)
-        
+
         # 保存截图
         self._save_frame_screenshot(frame)
-    
+
     def _save_frame_screenshot(self, frame: DebugFrame) -> None:
         """保存帧截图"""
         if not self._current_session:
             return
-        
+
         session_dir = self.output_dir / self._current_session.session_id
-        
+
         # 解码截图
         screenshot_bytes = base64.b64decode(frame.screenshot_base64)
-        
+
         # 重建元素列表
         elements = [
             ScreenElement(
@@ -369,12 +369,12 @@ class DebugViewer:
             )
             for e in frame.elements
         ]
-        
+
         # 确定高亮元素
         highlight = None
         if frame.action and frame.action.get("element_label"):
             highlight = frame.action["element_label"]
-        
+
         # 保存标注截图
         output_path = session_dir / f"step_{frame.step:03d}.png"
         save_debug_screenshot(
@@ -384,36 +384,39 @@ class DebugViewer:
             highlight_label=highlight,
             show_labels=True
         )
-    
+
     def end_session(self, success: bool) -> str:
         """结束调试会话"""
         if not self._current_session:
             return ""
-        
+
         self._current_session.end_time = time.time()
         self._current_session.success = success
         self._current_session.total_steps = self._frame_count
-        
+
         # 保存会话数据
         session_dir = self.output_dir / self._current_session.session_id
         session_file = session_dir / "session.json"
         self._current_session.save(str(session_file))
-        
+
         # 生成 HTML 报告
         self._generate_html_report()
-        
+
         session_id = self._current_session.session_id
         self._current_session = None
-        
+
         return session_id
-    
+
     def _generate_html_report(self) -> None:
         """生成 HTML 报告"""
         if not self._current_session:
             return
-        
+
         session_dir = self.output_dir / self._current_session.session_id
-        
+        success_class = 'success' if self._current_session.success else 'failure'
+        success_text = '✓ 成功' if self._current_session.success else '✗ 失败'
+        total_duration = (self._current_session.end_time or time.time()) - self._current_session.start_time
+
         html_content = f"""
 <!DOCTYPE html>
 <html>
@@ -440,36 +443,39 @@ class DebugViewer:
         <h1>🔍 调试报告</h1>
         <p>会话 ID: {self._current_session.session_id}</p>
     </div>
-    
+
     <div class="summary">
         <h2>📊 任务概览</h2>
         <p><strong>任务:</strong> {self._current_session.task}</p>
-        <p><strong>状态:</strong> <span class="{'success' if self._current_session.success else 'failure'}">
-            {'✓ 成功' if self._current_session.success else '✗ 失败'}
-        </span></p>
+        <p><strong>状态:</strong> <span class="{success_class}">{success_text}</span></p>
         <p><strong>总步数:</strong> {self._current_session.total_steps}</p>
-        <p><strong>总耗时:</strong> {(self._current_session.end_time or time.time()) - self._current_session.start_time:.2f}s</p>
+        <p><strong>总耗时:</strong> {total_duration:.2f}s</p>
     </div>
-    
+
     <h2>📝 执行步骤</h2>
 """
-        
+
         for frame in self._current_session.frames:
             action_info = ""
             if frame.action:
+                coord_str = str(frame.action.get('coordinate', 'N/A'))
+                label_str = str(frame.action.get('element_label', 'N/A'))
+                text_str = str(frame.action.get('text', ''))
                 action_info = f"""
                 <div class="action-info">
                     <strong>动作:</strong> {frame.action.get('type', 'N/A')}<br>
-                    {"<strong>坐标:</strong> " + str(frame.action.get('coordinate', 'N/A')) + "<br>" if frame.action.get('coordinate') else ""}
-                    {"<strong>元素:</strong> " + str(frame.action.get('element_label', 'N/A')) + "<br>" if frame.action.get('element_label') else ""}
-                    {"<strong>文本:</strong> " + str(frame.action.get('text', '')) + "<br>" if frame.action.get('text') else ""}
+                    {"<strong>坐标:</strong> " + coord_str + "<br>" if frame.action.get('coordinate') else ""}
+                    {"<strong>元素:</strong> " + label_str + "<br>" if frame.action.get('element_label') else ""}
+                    {"<strong>文本:</strong> " + text_str + "<br>" if frame.action.get('text') else ""}
                 </div>
                 """
-            
+
             result_status = ""
             if frame.result:
-                result_status = f"<span class='{'success' if frame.result['success'] else 'failure'}'>{'✓' if frame.result['success'] else '✗'}</span>"
-            
+                result_class = 'success' if frame.result['success'] else 'failure'
+                result_icon = '✓' if frame.result['success'] else '✗'
+                result_status = f"<span class='{result_class}'>{result_icon}</span>"
+
             html_content += f"""
     <div class="frame">
         <div class="frame-header">
@@ -481,16 +487,16 @@ class DebugViewer:
         {action_info}
     </div>
 """
-        
+
         html_content += """
 </body>
 </html>
 """
-        
+
         report_path = session_dir / "report.html"
         with open(report_path, 'w', encoding='utf-8') as f:
             f.write(html_content)
-    
+
     def show_screenshot(
         self,
         screenshot_bytes: bytes,
@@ -500,7 +506,7 @@ class DebugViewer:
         """显示截图 (仅在支持图形界面时有效)"""
         image = Image.open(BytesIO(screenshot_bytes))
         annotated = annotate_image(image, elements)
-        
+
         try:
             annotated.show(title=title)
         except Exception as e:
@@ -516,10 +522,10 @@ class DebugViewer:
 class DebugAgent:
     """
     调试代理包装器
-    
+
     包装 ComputerAgent 以添加调试功能
     """
-    
+
     def __init__(self, agent, viewer: DebugViewer = None):
         """
         Args:
@@ -528,19 +534,20 @@ class DebugAgent:
         """
         self._agent = agent
         self._viewer = viewer or DebugViewer()
-    
+
     def run(self, task: str) -> bool:
         """运行并记录调试信息"""
         session_id = self._viewer.start_session(task)
         print(f"🔍 调试会话已开始: {session_id}")
-        
+        success = False
+
         try:
             # 修改 agent 的 step 方法以记录
             original_step = self._agent.step
-            
+
             def debug_step(task_str):
                 action, result, screen_state = original_step(task_str)
-                
+
                 if screen_state:
                     self._viewer.record_frame(
                         screenshot_base64=screen_state.screenshot_base64,
@@ -548,22 +555,22 @@ class DebugAgent:
                         action=action,
                         result=result
                     )
-                
+
                 return action, result, screen_state
-            
+
             self._agent.step = debug_step
-            
+
             # 运行任务
             success = self._agent.run(task)
-            
+
             # 恢复原始方法
             self._agent.step = original_step
-            
+
             return success
-            
+
         finally:
-            session_id = self._viewer.end_session(success if 'success' in dir() else False)
-            print(f"📊 调试报告已生成: {self._viewer.output_dir / session_id / 'report.html'}")
+            final_session_id = self._viewer.end_session(success)
+            print(f"📊 调试报告已生成: {self._viewer.output_dir / final_session_id / 'report.html'}")
 
 
 # ==================== 便捷函数 ====================
@@ -576,13 +583,13 @@ def create_debug_agent(agent) -> DebugAgent:
 def quick_screenshot_debug(controller, detector, output_path: str = None) -> str:
     """
     快速调试截图
-    
+
     截取屏幕并保存标注后的调试图
     """
     screenshot_bytes = controller.screenshot()
     elements = detector.detect(screenshot_bytes)
-    
+
     if output_path is None:
         output_path = f"debug_{int(time.time())}.png"
-    
+
     return save_debug_screenshot(screenshot_bytes, elements, output_path)

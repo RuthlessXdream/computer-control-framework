@@ -9,34 +9,34 @@ macOS平台控制器实现
 - pyautogui: 作为备选方案
 """
 
+import os
 import platform
 import subprocess
 import tempfile
 import time
 from typing import Optional
-from io import BytesIO
 
 from ..core.base import ComputerController
-from ..core.types import Point, Size, Rect, MouseButton, CoordinateType
+from ..core.types import CoordinateType, MouseButton, Point, Rect, Size
 
 
 class MacOSController(ComputerController):
     """
     macOS控制器
-    
+
     优先使用Quartz框架进行底层控制，提供最佳性能和兼容性
     """
-    
+
     def __init__(self):
         super().__init__()
-        
+
         if platform.system() != "Darwin":
             raise RuntimeError("MacOSController can only run on macOS")
-        
+
         # 尝试导入Quartz
         try:
-            import Quartz
             import AppKit
+            import Quartz
             self._quartz = Quartz
             self._appkit = AppKit
             self._use_quartz = True
@@ -47,17 +47,17 @@ class MacOSController(ComputerController):
                 import pyautogui
                 self._pyautogui = pyautogui
                 self._pyautogui.FAILSAFE = False  # 禁用安全角落
-            except ImportError:
+            except ImportError as e:
                 raise RuntimeError(
                     "Neither Quartz nor pyautogui is available. "
                     "Install pyobjc-framework-Quartz or pyautogui."
-                )
-        
+                ) from e
+
         # 缓存屏幕尺寸
         self._screen_size = self.get_screen_size()
-    
+
     # ==================== 屏幕信息 ====================
-    
+
     def get_screen_size(self) -> Size:
         """获取屏幕尺寸"""
         if self._use_quartz:
@@ -67,7 +67,7 @@ class MacOSController(ComputerController):
         else:
             w, h = self._pyautogui.size()
             return Size(w, h)
-    
+
     def get_mouse_position(self) -> Point:
         """获取当前鼠标位置"""
         if self._use_quartz:
@@ -78,18 +78,18 @@ class MacOSController(ComputerController):
         else:
             x, y = self._pyautogui.position()
             return Point(x, y, CoordinateType.ABSOLUTE)
-    
+
     # ==================== 截屏功能 ====================
-    
+
     def screenshot(self, region: Optional[Rect] = None) -> bytes:
         """
         截取屏幕
-        
+
         使用macOS原生screencapture命令，支持Retina显示
         """
         with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp:
             tmp_path = tmp.name
-        
+
         try:
             if region:
                 # 截取指定区域
@@ -98,20 +98,19 @@ class MacOSController(ComputerController):
             else:
                 # 全屏截图 -C 包含鼠标指针
                 cmd = ["screencapture", "-x", "-C", tmp_path]
-            
+
             subprocess.run(cmd, check=True, capture_output=True)
-            
+
             with open(tmp_path, 'rb') as f:
                 return f.read()
         finally:
-            import os
             try:
                 os.unlink(tmp_path)
-            except:
+            except OSError:
                 pass
-    
+
     # ==================== 鼠标控制 ====================
-    
+
     def mouse_move(self, x: int, y: int, duration: float = 0.0) -> None:
         """移动鼠标"""
         if self._use_quartz:
@@ -134,7 +133,7 @@ class MacOSController(ComputerController):
             time.sleep(0.01)  # macOS需要一点时间同步
         else:
             self._pyautogui.moveTo(x, y, duration=duration)
-    
+
     def mouse_click(
         self,
         x: Optional[int] = None,
@@ -146,13 +145,13 @@ class MacOSController(ComputerController):
         """鼠标点击"""
         if x is not None and y is not None:
             self.mouse_move(x, y)
-        
+
         if self._use_quartz:
             pos = self.get_mouse_position()
             px, py = int(pos.x), int(pos.y)
-            
+
             down_event, up_event, btn = self._get_click_events(button)
-            
+
             for i in range(clicks):
                 self._send_mouse_event(down_event, px, py, btn)
                 self._send_mouse_event(up_event, px, py, btn)
@@ -161,7 +160,7 @@ class MacOSController(ComputerController):
         else:
             btn_str = button.value
             self._pyautogui.click(x, y, clicks=clicks, interval=interval, button=btn_str)
-    
+
     def mouse_down(self, button: MouseButton = MouseButton.LEFT) -> None:
         """按下鼠标"""
         if self._use_quartz:
@@ -170,7 +169,7 @@ class MacOSController(ComputerController):
             self._send_mouse_event(down_event, int(pos.x), int(pos.y), btn)
         else:
             self._pyautogui.mouseDown(button=button.value)
-    
+
     def mouse_up(self, button: MouseButton = MouseButton.LEFT) -> None:
         """释放鼠标"""
         if self._use_quartz:
@@ -179,7 +178,7 @@ class MacOSController(ComputerController):
             self._send_mouse_event(up_event, int(pos.x), int(pos.y), btn)
         else:
             self._pyautogui.mouseUp(button=button.value)
-    
+
     def mouse_scroll(
         self,
         clicks: int,
@@ -190,15 +189,15 @@ class MacOSController(ComputerController):
         """鼠标滚轮"""
         if x is not None and y is not None:
             self.mouse_move(x, y)
-        
+
         if self._use_quartz:
             # 每次滚动10单位，分多次执行
             direction = 1 if clicks >= 0 else -1
             remaining = abs(clicks)
-            
+
             while remaining > 0:
                 scroll_amount = min(remaining, 10) * direction
-                
+
                 if horizontal:
                     event = self._quartz.CGEventCreateScrollWheelEvent(
                         None,
@@ -214,7 +213,7 @@ class MacOSController(ComputerController):
                         1,  # wheelCount
                         scroll_amount  # vertical
                     )
-                
+
                 self._quartz.CGEventPost(self._quartz.kCGHIDEventTap, event)
                 remaining -= 10
         else:
@@ -222,7 +221,7 @@ class MacOSController(ComputerController):
                 self._pyautogui.hscroll(clicks, x, y)
             else:
                 self._pyautogui.scroll(clicks, x, y)
-    
+
     def mouse_drag(
         self,
         start_x: int,
@@ -237,32 +236,32 @@ class MacOSController(ComputerController):
             # 移动到起始位置
             self.mouse_move(start_x, start_y)
             time.sleep(0.05)
-            
+
             # 按下
             self.mouse_down(button)
             time.sleep(0.1)
-            
+
             # 拖拽移动
             steps = max(int(duration * 60), 1)
             drag_event = self._get_drag_event(button)
             btn = self._get_button_const(button)
-            
+
             for i in range(steps + 1):
                 t = i / steps
                 cur_x = int(start_x + (end_x - start_x) * t)
                 cur_y = int(start_y + (end_y - start_y) * t)
                 self._send_mouse_event(drag_event, cur_x, cur_y, btn)
                 time.sleep(duration / steps)
-            
+
             time.sleep(0.1)
             # 释放
             self.mouse_up(button)
         else:
             self._pyautogui.moveTo(start_x, start_y)
             self._pyautogui.drag(end_x - start_x, end_y - start_y, duration=duration, button=button.value)
-    
+
     # ==================== 键盘控制 ====================
-    
+
     def type_text(self, text: str, interval: float = 0.0) -> None:
         """输入文本"""
         if self._use_quartz:
@@ -272,13 +271,13 @@ class MacOSController(ComputerController):
                     time.sleep(interval)
         else:
             self._pyautogui.write(text, interval=interval)
-    
+
     def key_press(self, key: str) -> None:
         """按键"""
         self.key_down(key)
         time.sleep(0.05)
         self.key_up(key)
-    
+
     def key_down(self, key: str) -> None:
         """按下按键"""
         if self._use_quartz:
@@ -289,7 +288,7 @@ class MacOSController(ComputerController):
                 time.sleep(0.01)
         else:
             self._pyautogui.keyDown(key)
-    
+
     def key_up(self, key: str) -> None:
         """释放按键"""
         if self._use_quartz:
@@ -300,14 +299,14 @@ class MacOSController(ComputerController):
                 time.sleep(0.01)
         else:
             self._pyautogui.keyUp(key)
-    
+
     # ==================== 内部方法 ====================
-    
+
     def _send_mouse_event(self, event_type: int, x: int, y: int, button: int) -> None:
         """发送鼠标事件"""
         event = self._quartz.CGEventCreateMouseEvent(None, event_type, (x, y), button)
         self._quartz.CGEventPost(self._quartz.kCGHIDEventTap, event)
-    
+
     def _get_click_events(self, button: MouseButton):
         """获取点击事件类型"""
         if button == MouseButton.LEFT:
@@ -328,7 +327,7 @@ class MacOSController(ComputerController):
                 self._quartz.kCGEventOtherMouseUp,
                 self._quartz.kCGMouseButtonCenter
             )
-    
+
     def _get_drag_event(self, button: MouseButton) -> int:
         """获取拖拽事件类型"""
         if button == MouseButton.LEFT:
@@ -337,7 +336,7 @@ class MacOSController(ComputerController):
             return self._quartz.kCGEventRightMouseDragged
         else:
             return self._quartz.kCGEventOtherMouseDragged
-    
+
     def _get_button_const(self, button: MouseButton) -> int:
         """获取按钮常量"""
         if button == MouseButton.LEFT:
@@ -346,7 +345,7 @@ class MacOSController(ComputerController):
             return self._quartz.kCGMouseButtonRight
         else:
             return self._quartz.kCGMouseButtonCenter
-    
+
     def _type_character(self, char: str) -> None:
         """输入单个字符"""
         # 这里简化处理，实际需要更完整的键码映射
@@ -354,27 +353,27 @@ class MacOSController(ComputerController):
         if key_code is not None:
             # 检查是否需要Shift
             needs_shift = char.isupper() or char in '~!@#$%^&*()_+{}|:"<>?'
-            
+
             if needs_shift:
                 shift_code = self._get_key_code('shift')
                 if shift_code:
                     event = self._quartz.CGEventCreateKeyboardEvent(None, shift_code, True)
                     self._quartz.CGEventPost(self._quartz.kCGHIDEventTap, event)
-            
+
             # 按键
             event = self._quartz.CGEventCreateKeyboardEvent(None, key_code, True)
             self._quartz.CGEventPost(self._quartz.kCGHIDEventTap, event)
             event = self._quartz.CGEventCreateKeyboardEvent(None, key_code, False)
             self._quartz.CGEventPost(self._quartz.kCGHIDEventTap, event)
-            
+
             if needs_shift:
                 shift_code = self._get_key_code('shift')
                 if shift_code:
                     event = self._quartz.CGEventCreateKeyboardEvent(None, shift_code, False)
                     self._quartz.CGEventPost(self._quartz.kCGHIDEventTap, event)
-            
+
             time.sleep(0.01)
-    
+
     def _get_key_code(self, key: str) -> Optional[int]:
         """获取按键码"""
         # macOS按键码映射 (来自 pyautogui/_pyautogui_osx.py)
@@ -408,4 +407,3 @@ class MacOSController(ComputerController):
             'left': 0x7b, 'right': 0x7c, 'down': 0x7d, 'up': 0x7e,
         }
         return key_map.get(key.lower())
-
