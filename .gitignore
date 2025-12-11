@@ -1,0 +1,75 @@
+# Computer Control Framework - Git Ignore
+
+# ==================== Python ====================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# ==================== Virtual Environments ====================
+venv/
+.venv/
+ENV/
+env/
+
+# ==================== IDE ====================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# ==================== Testing ====================
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# ==================== Logs ====================
+logs/
+*.log
+
+# ==================== Environment ====================
+.env
+.env.local
+.env.*.local
+# 注意: env.example 是模板，应该提交到 Git
+
+# ==================== OS ====================
+.DS_Store
+Thumbs.db
+
+# ==================== Project Specific ====================
+# 测试生成的截图文件
+test_*.png
+screenshot_*.png
+
+# OmniParser 模型（太大不应上传）
+weights/
+*.pt
+*.pth
+*.onnx
+
+# 临时文件
+tmp/
+temp/

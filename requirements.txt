@@ -1,0 +1,57 @@
+# Computer Control Framework Dependencies
+# 电脑控制框架依赖
+# 
+# 安装方式:
+#   pip install -r requirements.txt
+#
+# 可选依赖请参考下方分组说明
+
+# ==================== 核心依赖 (必需) ====================
+pillow>=9.0.0,<11.0.0
+
+# ==================== 跨平台控制 (推荐) ====================
+pyautogui>=0.9.53,<1.0.0
+
+# ==================== macOS 依赖 (macOS 推荐) ====================
+# 提供更好的性能和原生 API 支持
+# pip install pyobjc-framework-Quartz pyobjc-framework-ApplicationServices
+pyobjc-framework-Quartz>=9.0,<11.0; sys_platform == "darwin"
+pyobjc-framework-ApplicationServices>=9.0,<11.0; sys_platform == "darwin"
+
+# ==================== Windows 依赖 (Windows 可选) ====================
+# UI 自动化增强
+# pip install pywinauto
+# pywinauto>=0.6.8,<1.0.0; sys_platform == "win32"
+
+# ==================== Linux 依赖 (Linux 可选) ====================
+# X11 支持
+# pip install python-xlib
+# python-xlib>=0.33,<1.0.0; sys_platform == "linux"
+
+# ==================== UI 元素检测 (可选) ====================
+# YOLO 模型检测
+# pip install ultralytics
+# ultralytics>=8.0.0,<9.0.0
+
+# ==================== OCR 文字识别 (可选) ====================
+# EasyOCR (推荐)
+# pip install easyocr
+# easyocr>=1.7.0,<2.0.0
+
+# PaddleOCR (备选)
+# pip install paddleocr
+# paddleocr>=2.6.0,<3.0.0
+
+# ==================== OmniParser 依赖 (可选) ====================
+# 完整的 UI 元素检测需要 OmniParser
+# 参考: https://github.com/microsoft/OmniParser
+#
+# torch>=2.0.0
+# torchvision>=0.15.0
+# transformers>=4.30.0
+# timm>=0.9.0
+# einops>=0.6.0
+# supervision>=0.14.0
+
+# ==================== 开发依赖 ====================
+# pip install -r requirements-dev.txt
