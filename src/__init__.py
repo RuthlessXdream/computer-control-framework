@@ -42,17 +42,23 @@ Computer Control Framework
 __version__ = "0.2.0"
 
 # 核心类型
-from .core.types import (
-    Action,
-    ActionResult,
-    ActionType,
-    CoordinateType,
-    MouseButton,
-    Point,
-    Rect,
-    ScreenElement,
-    ScreenState,
-    Size,
+# AI接口 (同步)
+from .ai_interface import (
+    AgentConfig,
+    AIBrain,
+    ComputerAgent,
+    SimpleClickBrain,
+    create_agent,
+)
+
+# AI接口 (异步)
+from .async_agent import (
+    AsyncAgentConfig,
+    AsyncAIBrain,
+    AsyncComputerAgent,
+    SyncBrainAdapter,
+    create_async_agent,
+    run_task,
 )
 
 # 控制器
@@ -69,25 +75,34 @@ from .core.retry import (
     linear_backoff,
     retry,
 )
+from .core.types import (
+    Action,
+    ActionResult,
+    ActionType,
+    CoordinateType,
+    MouseButton,
+    Point,
+    Rect,
+    ScreenElement,
+    ScreenState,
+    Size,
+)
 from .platforms import get_controller
 
-# AI接口 (同步)
-from .ai_interface import (
-    AgentConfig,
-    AIBrain,
-    ComputerAgent,
-    create_agent,
-    SimpleClickBrain,
+# 日志和调试
+from .utils.debug import (
+    DebugAgent,
+    DebugViewer,
+    annotate_screenshot,
+    create_debug_agent,
+    quick_screenshot_debug,
+    save_debug_screenshot,
 )
-
-# AI接口 (异步)
-from .async_agent import (
-    AsyncAgentConfig,
-    AsyncAIBrain,
-    AsyncComputerAgent,
-    create_async_agent,
-    run_task,
-    SyncBrainAdapter,
+from .utils.logger import (
+    get_action_logger,
+    get_logger,
+    init_logging,
+    set_level,
 )
 
 # 视觉模块
@@ -102,26 +117,12 @@ from .vision.detector import (
     DummyDetector,
     EasyOCRDetector,
     ElementDetector,
-    OmniParserDetector as OmniParserDetectorRemote,
     YOLODetector,
 )
+from .vision.detector import (
+    OmniParserDetector as OmniParserDetectorRemote,
+)
 from .vision.omniparser_detector import OmniParserDetector
-
-# 日志和调试
-from .utils.debug import (
-    annotate_screenshot,
-    create_debug_agent,
-    DebugAgent,
-    DebugViewer,
-    quick_screenshot_debug,
-    save_debug_screenshot,
-)
-from .utils.logger import (
-    get_action_logger,
-    get_logger,
-    init_logging,
-    set_level,
-)
 
 __all__ = [
     # Version

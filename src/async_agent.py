@@ -87,10 +87,10 @@ class AsyncAIBrain(ABC):
         """
         pass
 
-    async def on_action_result(self, action: Action, result: ActionResult) -> None:
+    async def on_action_result(self, action: Action, result: ActionResult) -> None:  # noqa: B027
         """动作执行结果回调"""
         # 默认空实现，子类可覆盖
-        pass
+        _ = (action, result)  # 标记参数已使用
 
     async def should_continue(self, step: int, screen_state: ScreenState) -> bool:
         """判断是否继续执行"""

@@ -80,7 +80,7 @@ class AIBrain(ABC):
         """
         pass
 
-    def on_action_result(self, action: Action, result: ActionResult) -> None:
+    def on_action_result(self, action: Action, result: ActionResult) -> None:  # noqa: B027
         """
         动作执行结果回调（可选实现）
 
@@ -89,7 +89,7 @@ class AIBrain(ABC):
             result: 执行结果
         """
         # 默认空实现，子类可覆盖
-        pass
+        _ = (action, result)  # 标记参数已使用
 
     def should_continue(self, step: int, screen_state: ScreenState) -> bool:
         """

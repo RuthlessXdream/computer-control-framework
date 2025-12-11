@@ -91,7 +91,7 @@ class AccessibilityDetector(ElementDetector):
                             ("fullscreen", button_x_start + 2 * (button_size + button_spacing), button_y, (39, 201, 63)),
                         ]
 
-                        for name, bx, by, color in buttons:
+                        for name, bx, by, _color in buttons:
                             elements.append(ScreenElement(
                                 label=f"window_{name}",
                                 rect=Rect(bx, by, bx + button_size, by + button_size),
